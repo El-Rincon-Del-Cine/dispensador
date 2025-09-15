@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Poké-Dispensador</title>
+  <style>
+    :root { --bg:#f5f7fb; --card:#fff; --text:#1b1f2a; --muted:#6b7280; --primary:#2563eb; --ok:#16a34a; --bad:#dc2626; --border:#e5e7eb; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);min-height:100vh;display:grid;place-items:center;padding:16px}
+    .card{width:min(720px,95vw);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+    .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    h1{margin:0;font-size:20px}
+    button,.opt{appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
+    #btnNuevo{background:var(--primary);border-color:var(--primary);color:#fff}
+    #btnNuevo:disabled{opacity:.6;cursor:not-allowed}
+    .poke{display:none;gap:12px;align-items:center;margin-top:12px}
+    .poke img{width:96px;height:96px;object-fit:contain;background:#f3f4f6;border:1px solid var(--border);border-radius:10px;padding:6px;image-rendering:pixelated}
+    .muted{color:var(--muted);font-size:14px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+    .opt:hover{border-color:var(--primary)}
+    .ok{outline:2px solid var(--ok)}
+    .bad{outline:2px solid var(--bad)}
+    #status{margin-top:10px;font-size:14px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="row">
+      <div>
+        <h1>Poké-Dispensador</h1>
+        <div class="muted">Acierta el nombre: si aciertas, recibirás un premio</div>
+      </div>
+      <button id="btnNuevo">Nuevo Pokémon</button>
+    </div>
+
+    <div id="poke" class="poke">
+      <img id="pokeImg" alt="Pokémon">
+      <div>
+        <div id="pokeId" class="muted"></div>
+        <div style="margin-top:4px">¿Cómo se llama?</div>
+      </div>
+    </div>
+
+    <div id="options" class="grid"></div>
+    <div id="status">Listo. Presiona “Nuevo Pokémon”.</div>
+  </div>
+
+<script>
+// === Cambiar por mi IP ===
+const ESP32_BASE_URL = "https://api.codetabs.com/v1/proxy?quest=http://192.168.1.79";
+
+const MAX_POKE = 898; // Gen 1–8
+const btnNuevo = document.getElementById('btnNuevo');
+const statusEl = document.getElementById('status');
+const poke = document.getElementById('poke');
+const pokeImg = document.getElementById('pokeImg');
+const pokeId = document.getElementById('pokeId');
+const optionsEl = document.getElementById('options');
+
+let correct = null, loading = false;
+
+function r(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+async function getPokemon(id){
+  const r = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+  if(!r.ok) throw new Error('PokeAPI');
+  return r.json();
+}
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1).replace('-',' '); }
+
+async function nuevo(){
+  if(loading) return; loading = true; btnNuevo.disabled = true;
+  optionsEl.innerHTML=''; poke.style.display='none'; statusEl.textContent='Cargando Pokémon…';
+  try{
+    const id = r(1,MAX_POKE);
+    const d = await getPokemon(id);
+    correct = d.name;
+
+    const sprite = d.sprites?.other?.['official-artwork']?.front_default || d.sprites?.front_default || "";
+    pokeImg.src = sprite; pokeImg.alt = d.name;
+    pokeId.textContent = `#${String(id).padStart(3,'0')}`;
+    poke.style.display = 'flex';
+
+    const names = new Set([d.name]);
+    while(names.size<4){
+      const rid = r(1,MAX_POKE); if(rid===id) continue;
+      try{ names.add((await getPokemon(rid)).name); }catch{}
+    }
+    [...names].sort(()=>Math.random()-0.5).forEach(n=>{
+      const b=document.createElement('button');
+      b.className='opt'; b.textContent=cap(n); b.onclick=()=>answer(n,b);
+      optionsEl.appendChild(b);
+    });
+    statusEl.textContent='Elige una opción.';
+  }catch(e){
+    console.error(e); statusEl.textContent='No pude cargar el Pokémon. Intenta de nuevo.';
+  }finally{
+    btnNuevo.disabled=false; loading=false;
+  }
+}
+
+async function answer(sel, btn){
+  document.querySelectorAll('.opt').forEach(o=>o.disabled=true);
+
+  if (sel === correct) {
+    btn.classList.add('ok');
+    statusEl.textContent = '¡Correcto! Soltando 1 dulce…';
+    try {
+      const r = await fetch(`${ESP32_BASE_URL}/dispense`, { method: 'POST' }); // <-- así
+      if (!r.ok) throw new Error('ESP32');
+      await r.json().catch(()=>({}));
+      statusEl.textContent = '¡Hecho! ';
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = 'Acertaste, pero no pude comunicarme con el ESP32.';
+    }
+  } else {
+    btn.classList.add('bad');
+    statusEl.textContent = 'Incorrecto. No hay dulce esta vez.';
+  }
+}
+
+btnNuevo.addEventListener('click', nuevo);
+</script>
+</body>
+</html>
