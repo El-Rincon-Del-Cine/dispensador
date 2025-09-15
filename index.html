@@ -48,8 +48,7 @@
 
 <script>
 // === Cambiar por mi IP ===
-const ESP32_BASE_URL = "https://cors-anywhere.herokuapp.com/http://192.168.1.79";
-
+const ESP32_BASE_URL = "https://corsproxy.io/?http://192.168.1.79";
 const MAX_POKE = 898; // Gen 1–8
 const btnNuevo = document.getElementById('btnNuevo');
 const statusEl = document.getElementById('status');
@@ -123,4 +122,5 @@ async function answer(sel, btn){
 btnNuevo.addEventListener('click', nuevo);
 </script>
 </body>
+
 </html>
