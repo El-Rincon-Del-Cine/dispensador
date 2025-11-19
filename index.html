@@ -1,30 +1,22 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Poké-Dispensador</title>
-  <style>
-    :root { --bg:#f5f7fb; --card:#fff; --text:#1b1f2a; --muted:#6b7280; --primary:#2563eb; --ok:#16a34a; --bad:#dc2626; --border:#e5e7eb; }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);min-height:100vh;display:grid;place-items:center;padding:16px}
-    .card{width:min(720px,95vw);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
-    .row{display:flex;gap:12px;align-items:center;justify-content:space-between}
-    h1{margin:0;font-size:20px}
-    button,.opt{appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
-    #btnNuevo{background:var(--primary);border-color:var(--primary);color:#fff}
-    #btnNuevo:disabled{opacity:.6;cursor:not-allowed}
-    .poke{display:none;gap:12px;align-items:center;margin-top:12px}
-    .poke img{width:96px;height:96px;object-fit:contain;background:#f3f4f6;border:1px solid var(--border);border-radius:10px;padding:6px;image-rendering:pixelated}
-    .muted{color:var(--muted);font-size:14px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
-    .opt:hover{border-color:var(--primary)}
-    .ok{outline:2px solid var(--ok)}
-    .bad{outline:2px solid var(--bad)}
-    #status{margin-top:10px;font-size:14px;color:var(--muted)}
-  </style>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
+  <br><br><br>
+  <div id="bienvenida">
+    <p>La Licenciatura en Tecnologías de la Información los invita a participar en está actividad para poner a prueba sus
+      conocimientos sobre los Pokémon más populares. ¡Adivina el nombre del Pokémon y gana un premio!, para más Información
+    de nuestra carrera visita nuestro sitio web dando clic en este 
+    <a href="https://uaeh.edu.mx/campus/tizayuca/tecnologias_informacion/campo-laboral.html">enlace</a>.</p>
+    <img src="/img/uaeh.png" alt="UAEH" id="logo-uaeh" class="logo-uaeh">
+  </div>
+  <br><br>
   <div class="card">
     <div class="row">
       <div>
@@ -46,81 +38,173 @@
     <div id="status">Listo. Presiona “Nuevo Pokémon”.</div>
   </div>
 
-<script>
-// === Cambiar por mi IP ===
-const ESP32_BASE_URL = "https://corsproxy.io/?http://192.168.1.79";
-const MAX_POKE = 898; // Gen 1–8
-const btnNuevo = document.getElementById('btnNuevo');
-const statusEl = document.getElementById('status');
-const poke = document.getElementById('poke');
-const pokeImg = document.getElementById('pokeImg');
-const pokeId = document.getElementById('pokeId');
-const optionsEl = document.getElementById('options');
+  <script>
 
-let correct = null, loading = false;
+    const ESP32_BASE_URL = "http://192.168.137.80"; //ip del esp32
 
-function r(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
-async function getPokemon(id){
-  const r = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
-  if(!r.ok) throw new Error('PokeAPI');
-  return r.json();
-}
-function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1).replace('-',' '); }
+    const MAX_POKE = 898; 
+    const btnNuevo = document.getElementById('btnNuevo');
+    const statusEl = document.getElementById('status');
+    const poke = document.getElementById('poke');
+    const pokeImg = document.getElementById('pokeImg');
+    const pokeId = document.getElementById('pokeId');
+    const optionsEl = document.getElementById('options');
 
-async function nuevo(){
-  if(loading) return; loading = true; btnNuevo.disabled = true;
-  optionsEl.innerHTML=''; poke.style.display='none'; statusEl.textContent='Cargando Pokémon…';
-  try{
-    const id = r(1,MAX_POKE);
-    const d = await getPokemon(id);
-    correct = d.name;
+    let correct = null, loading = false;
 
-    const sprite = d.sprites?.other?.['official-artwork']?.front_default || d.sprites?.front_default || "";
-    pokeImg.src = sprite; pokeImg.alt = d.name;
-    pokeId.textContent = `#${String(id).padStart(3,'0')}`;
-    poke.style.display = 'flex';
-
-    const names = new Set([d.name]);
-    while(names.size<4){
-      const rid = r(1,MAX_POKE); if(rid===id) continue;
-      try{ names.add((await getPokemon(rid)).name); }catch{}
+    function r(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    async function getPokemon(id) {
+      const r = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+      if (!r.ok) throw new Error('PokeAPI');
+      return r.json();
     }
-    [...names].sort(()=>Math.random()-0.5).forEach(n=>{
-      const b=document.createElement('button');
-      b.className='opt'; b.textContent=cap(n); b.onclick=()=>answer(n,b);
-      optionsEl.appendChild(b);
-    });
-    statusEl.textContent='Elige una opción.';
-  }catch(e){
-    console.error(e); statusEl.textContent='No pude cargar el Pokémon. Intenta de nuevo.';
-  }finally{
-    btnNuevo.disabled=false; loading=false;
-  }
-}
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' '); }
 
-async function answer(sel, btn){
-  document.querySelectorAll('.opt').forEach(o=>o.disabled=true);
+    async function nuevo() {
+      if (loading) return; loading = true; btnNuevo.disabled = true;
+      optionsEl.innerHTML = ''; poke.style.display = 'none'; statusEl.textContent = 'Cargando Pokémon…';
+      try {
+        const id = r(1, MAX_POKE);
+        const d = await getPokemon(id);
+        correct = d.name;
 
-  if (sel === correct) {
-    btn.classList.add('ok');
-    statusEl.textContent = '¡Correcto! Soltando 1 dulce…';
-    try {
-      const r = await fetch(`${ESP32_BASE_URL}/dispense`, { method: 'POST' }); // <-- así
-      if (!r.ok) throw new Error('ESP32');
-      await r.json().catch(()=>({}));
-      statusEl.textContent = '¡Hecho! ';
-    } catch (e) {
-      console.error(e);
-      statusEl.textContent = 'Acertaste, pero no pude comunicarme con el ESP32.';
+        const sprite = d.sprites?.other?.['official-artwork']?.front_default || d.sprites?.front_default || "";
+        pokeImg.src = sprite; pokeImg.alt = d.name;
+        pokeId.textContent = `#${String(id).padStart(3, '0')}`;
+        poke.style.display = 'flex';
+
+        const names = new Set([d.name]);
+        while (names.size < 4) {
+          const rid = r(1, MAX_POKE); if (rid === id) continue;
+          try { names.add((await getPokemon(rid)).name); } catch { }
+        }
+        [...names].sort(() => Math.random() - 0.5).forEach(n => {
+          const b = document.createElement('button');
+          b.className = 'opt'; b.textContent = cap(n); b.onclick = () => answer(n, b);
+          optionsEl.appendChild(b);
+        });
+        statusEl.textContent = 'Elige una opción.';
+      } catch (e) {
+        console.error(e); statusEl.textContent = 'No pude cargar el Pokémon. Intenta de nuevo.';
+      } finally {
+        btnNuevo.disabled = false; loading = false;
+      }
     }
-  } else {
-    btn.classList.add('bad');
-    statusEl.textContent = 'Incorrecto. No hay dulce esta vez.';
-  }
-}
 
-btnNuevo.addEventListener('click', nuevo);
-</script>
+    async function answer(sel, btn) {
+      document.querySelectorAll('.opt').forEach(o => o.disabled = true);
+
+      if (sel === correct) { 
+        btn.classList.add('ok');
+        statusEl.textContent = '¡Correcto! Soltando 1 dulce…';
+
+        // Mostrar modal al acertar
+        mostrarModalAcierto();
+
+        try {
+            const esp32Url = 'http://192.168.137.80/dispense';
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const r = await fetch(esp32Url, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json();
+            console.log('Respuesta ESP32:', data);
+            statusEl.textContent = '¡Hecho! ¡Dulce dispensado! ';
+        } catch (e) {
+            console.error('Error ESP32:', e);
+            if (e.name === 'AbortError') {
+                statusEl.textContent = 'Acertaste, pero el dispensador no responde (timeout).';
+            } else {
+                statusEl.textContent = 'Acertaste, pero no pude comunicarme con el dispensador.';
+            }
+        }
+
+      } else {
+        btn.classList.add('bad');
+        statusEl.textContent = 'Incorrecto. No hay dulce esta vez.';
+      }
+    }
+
+    btnNuevo.addEventListener('click', nuevo);
+
+    // Función del modal
+    function mostrarModalAcierto() {
+        const modal = document.getElementById("modal-acierto");
+        modal.style.display = "flex";
+
+        document.getElementById("cerrarModal").onclick = () => {
+            modal.style.display = "none";
+        };
+
+        modal.onclick = (e) => {
+          if (e.target.id === "modal-acierto") modal.style.display = "none";
+        };
+    }
+
+  </script>
+
+  <!-- MODAL DE ACIERTO -->
+  <div id="modal-acierto" class="modal-traslape">
+      <div class="modal-contenido">
+          <img src="icons/192.png" class="modal-icono" alt="Pokebola">
+          <h2>¡Correcto!</h2>
+          <p>¡Adivinaste el Pokémon!</p>
+          <button id="cerrarModal">Cerrar</button>
+      </div>
+  </div>
+
+  <style>
+    .modal-traslape {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.55);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .modal-contenido {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(5px);
+        text-align: center;
+        padding: 25px;
+        border-radius: 12px;
+        width: 80%;
+        max-width: 350px;
+        animation: pop 0.3s ease;
+    }
+
+    .modal-icono {
+        width: 80px;
+        margin-bottom: 15px;
+    }
+
+    #cerrarModal {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        background: #ffcb05;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    @keyframes pop {
+        0% { transform: scale(0.7); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+
 </body>
-
 </html>
